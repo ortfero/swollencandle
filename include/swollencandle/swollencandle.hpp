@@ -361,7 +361,7 @@ namespace swollencandle {
         trades.reserve(maybe_reader->text_size() / line_estimation + 1);
         trade trade;
         for(auto& row: maybe_reader->first_to_last_rows()) {
-            if(!row.parse(trade.time, trade.amount, trade.price)) {
+            if(!row.parse(trade.time, trade.price, trade.amount)) {
                 ec = make_error_code(error::invalid_trade_fields);
                 return false;
             }
@@ -379,7 +379,7 @@ namespace swollencandle {
         auto constexpr line_estimation = 72;
         writer.reserve(trades.size() * line_estimation);
         for(auto const& trade: trades)
-            writer.format(trade.time, trade.amount, trade.price);
+            writer.format(trade.time, trade.price, trade.amount);
         if(!writer.to_file(filename, ec))
             return false;
 
