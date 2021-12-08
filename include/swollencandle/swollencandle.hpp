@@ -314,6 +314,7 @@ namespace swollencandle {
             return false;
 
         auto constexpr line_estimation = 72;
+        candles.clear();
         candles.reserve(maybe_reader->text_size() / line_estimation + 1);
         candle candle;
         for(auto& row: maybe_reader->second_to_last_rows()) {
@@ -358,6 +359,7 @@ namespace swollencandle {
             return false;
 
         auto constexpr line_estimation = 32;
+        trades.clear();
         trades.reserve(maybe_reader->text_size() / line_estimation + 1);
         trade trade;
         for(auto& row: maybe_reader->first_to_last_rows()) {
