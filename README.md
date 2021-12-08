@@ -1,8 +1,19 @@
 # swollencandle
+
 C++20 single header library to upscale and merge candlesticks
 
 
-## Candle data type
+## Dependencies
+
+* [cosevalues](https://github.com/ortfero/cosevalues) - to read/write CSV files
+
+## Install
+
+Place `swollencandle/swollencandle.hpp`, `cosevalues/cosevalues.hpp` at include path
+
+## Snippets
+
+### Candle data type
 
 ```cpp
 struct candle {
@@ -59,7 +70,7 @@ std::optional<upscale_period> maybe_upscale_period =
 ```cpp
 std::vector<swollencandle::trade> trades;
 std::vector<swollencandle::candle> candles;
-std::error_code;
+std::error_code ec;
 if(!swollencandle::upscale(trades, candles, swollencandle::upscale_period::day, ec)) {
     std::cerr << ec.message() << '\n';
 }
@@ -71,7 +82,7 @@ if(!swollencandle::upscale(trades, candles, swollencandle::upscale_period::day, 
 ```cpp
 std::vector<swollencandle::candle> source;
 std::vector<swollencandle::candle> result;
-std::error_code;
+std::error_code ec;
 if(!swollencandle::upscale(source, result, swollencandle::upscale_period::day, ec)) {
     std::cerr << ec.message() << '\n';
 }
@@ -83,8 +94,31 @@ if(!swollencandle::upscale(source, result, swollencandle::upscale_period::day, e
 ```cpp
 std::vector<swollencandle::candle> x, y;
 std::vector<swollencandle::candle> result;
-std::error_code;
+std::error_code ec;
 if(!swollencandle::merge(x, y, result, ec)) {
     std::cerr << ec.message() << '\n';
 }
 ```
+
+### Read candlesticks
+
+```cpp
+std::vector<swollencandle::candle> candles;
+std::error_code ec;
+if(!swollencandle::read("candles.csv", candles, ec)) {
+    std::cerr << ec.message() << '\n';
+}
+```
+
+### Write candlesticks
+
+```cpp
+std::vector<swollencandle::candle> candles;
+std::error_code ec;
+if(!swollencandle::write("candles.csv", candles, ec)) {
+    std::cerr << ec.message() << '\n';
+}
+```
+
+### Read trades
+

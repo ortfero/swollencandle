@@ -6,10 +6,11 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <span>
 #include <system_error>
 #include <unordered_map>
 #include <vector>
+
+#include <cosevalues/cosevalues.hpp>
 
 
 namespace swollencandle {
@@ -97,7 +98,9 @@ namespace swollencandle {
         invalid_upscale_period,
         merging_periods_mismatch,
         duplicated_candle,
-        mismatched_candles
+        mismatched_candles,
+        invalid_candle_fields,
+        invalid_trade_fields
     };
 
 
@@ -122,6 +125,10 @@ namespace swollencandle {
                     return "Duplicated candle";
                 case error::mismatched_candles:
                     return "Mismatched candles";
+                case error::invalid_candle_fields:
+                    return "Invalid candle fields";
+                case error::invalid_trade_fields:
+                    return "Invalid trade fields";
                 default:
                     return "Unknown";
             }
@@ -296,6 +303,89 @@ namespace swollencandle {
 
         return true;
     }
+
+
+    bool read(std::string const& filename,
+              std::vector<candle>& candles,
+              std::error_code& ec) {
+
+        auto maybe_reader = cosevalues::reader::from_file(filename, ec);
+        if(!maybe_reader)
+            return false;
+
+        auto constexpr line_estimation = 72;
+        candles.reserve(maybe_reader->text_size() / line_estimation + 1);
+        candle candle;
+        for(auto& row: maybe_reader->second_to_last_rows()) {
+            if(!row.parse(candle.time, candle.period, candle.count, candle.volume,
+                          candle.vwap_price, candle.open_price, candle.high_price,
+                          candle.low_price, candle.close_price)) {
+                ec = make_error_code(error::invalid_candle_fields);
+                return false;
+            }
+            candles.push_back(candle);
+        }
+
+        return true;
+    }
+
+
+    bool write(std::string const& filename,
+              std::vector<candle> const& candles,
+              std::error_code& ec) {
+        auto writer = cosevalues::writer();
+        auto constexpr line_estimation = 72;
+        writer.reserve(candles.size() * line_estimation);
+        writer.format("time", "period", "trades", "volume", "vwap_price",
+                      "open_price", "high_price", "low_price", "close_price");
+        for(auto const& candle: candles)
+            writer.format(candle.time, candle.period, candle.count, candle.volume,
+                          candle.vwap_price, candle.open_price, candle.high_price,
+                          candle.low_price, candle.close_price);
+        if(!writer.to_file(filename, ec))
+            return false;
+
+        return true;
+    }
+
+
+    bool read(std::string const& filename,
+              std::vector<trade>& trades,
+              std::error_code& ec) {
+
+        auto maybe_reader = cosevalues::reader::from_file(filename, ec);
+        if(!maybe_reader)
+            return false;
+
+        auto constexpr line_estimation = 32;
+        trades.reserve(maybe_reader->text_size() / line_estimation + 1);
+        trade trade;
+        for(auto& row: maybe_reader->first_to_last_rows()) {
+            if(!row.parse(trade.time, trade.amount, trade.price)) {
+                ec = make_error_code(error::invalid_trade_fields);
+                return false;
+            }
+            trades.push_back(trade);
+        }
+
+        return true;
+    }
+
+
+    bool write(std::string const& filename,
+               std::vector<trade> const& trades,
+               std::error_code& ec) {
+        auto writer = cosevalues::writer();
+        auto constexpr line_estimation = 72;
+        writer.reserve(trades.size() * line_estimation);
+        for(auto const& trade: trades)
+            writer.format(trade.time, trade.amount, trade.price);
+        if(!writer.to_file(filename, ec))
+            return false;
+
+        return true;
+    }
+
 
 }
 
