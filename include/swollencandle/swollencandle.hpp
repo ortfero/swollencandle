@@ -173,8 +173,12 @@ namespace swollencandle {
                  std::vector<candle>& result,
                  upscale_period up,
                  std::error_code& ec) {
-        if(source.empty())
+
+        if(source.empty()) {
+            result.clear();
             return true;
+        }
+
         if(!detail::check_integrity(source, ec))
             return false;
         auto const period = source.front().period;
@@ -258,6 +262,8 @@ namespace swollencandle {
                  std::vector<candle>& result,
                  upscale_period up,
                  std::error_code& ec) {
+
+        result.clear();
         if(trades.empty())
             return true;
 
@@ -273,6 +279,7 @@ namespace swollencandle {
         candle.high_price = first_trade.price;
         candle.low_price = first_trade.price;
         candle.close_price = first_trade.price;
+
         for(std::size_t i = 1; i != trades.size(); ++i) {
             auto const& each_trade = trades[i];
             if(each_trade.time >= candle.time + period_in_seconds) {
