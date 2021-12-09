@@ -89,6 +89,9 @@ namespace swollencandle {
         std::uint64_t time;
         double amount;
         double price;
+
+        bool operator == (trade const&) const noexcept = default;
+        bool operator != (trade const&) const noexcept = default;
     };
 
 
@@ -100,7 +103,9 @@ namespace swollencandle {
         duplicated_candle,
         mismatched_candles,
         invalid_candle_fields,
-        invalid_trade_fields
+        invalid_trade_fields,
+        duplicated_trade,
+        mismatched_trade
     };
 
 
@@ -129,6 +134,10 @@ namespace swollencandle {
                     return "Invalid candle fields";
                 case error::invalid_trade_fields:
                     return "Invalid trade fields";
+                case error::duplicated_trade:
+                    return "Duplicated trade";
+                case error::mismatched_trade:
+                    return "Mismatched trade";
                 default:
                     return "Unknown";
             }
@@ -233,13 +242,17 @@ namespace swollencandle {
         indexed.reserve(x.size() + y.size());
         for (auto const& each: x) {
             auto const placed = indexed.try_emplace(each.time, &each);
-            if(!placed.second)
+            if(!placed.second) {
+                uformat::error("[warning] Candle issue at time ", each.time);
                 return detail::failed(ec, make_error_code(error::duplicated_candle));
+            }
         }
         for (auto const& each: y) {
             auto const placed = indexed.try_emplace(each.time, &each);
-            if(!placed.second && *placed.first->second != each)
+            if(!placed.second && *placed.first->second != each) {
+                uformat::error("[warning] Candle issue at time ", each.time);
                 return detail::failed(ec, make_error_code(error::mismatched_candles));
+            }
         }
         std::vector<std::pair<std::uint64_t, candle const*>> sorted;
         sorted.resize(indexed.size());
@@ -311,6 +324,43 @@ namespace swollencandle {
         return true;
     }
 
+
+    bool merge(std::vector<trade> const& x,
+               std::vector<trade> const& y,
+               std::vector<trade>& z,
+               std::error_code& ec) {
+
+        std::unordered_map<std::uint64_t, trade const*> indexed;
+        indexed.reserve(x.size() + y.size());
+        for (auto const& each: x) {
+            auto const placed = indexed.try_emplace(each.time, &each);
+            if(!placed.second) {
+                uformat::error("[warning] Trade issue at time ", each.time);
+                return detail::failed(ec, make_error_code(error::duplicated_trade));
+            }
+        }
+        for (auto const& each: y) {
+            auto const placed = indexed.try_emplace(each.time, &each);
+            if(!placed.second && *placed.first->second != each) {
+                uformat::error("[warning] Trade issue at time ", each.time);
+                return detail::failed(ec, make_error_code(error::mismatched_trade));
+            }
+        }
+        std::vector<std::pair<std::uint64_t, trade const*>> sorted;
+        sorted.resize(indexed.size());
+        std::size_t i = 0;
+        for (auto const& [time, ptr]: indexed) {
+            sorted[i].first = time;
+            sorted[i].second = ptr;
+            ++i;
+        }
+        std::sort(sorted.begin(), sorted.end(),
+                  [](auto const& x, auto const& y) { return x.first < y.first; });
+        z.resize(sorted.size());
+        for (i = 0; i != indexed.size(); ++i)
+            z[i] = *sorted[i].second;
+        return true;
+    }
 
     bool read(std::string const& filename,
               std::vector<candle>& candles,
